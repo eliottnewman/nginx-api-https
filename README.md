@@ -1,90 +1,134 @@
-#Debian 12 server Initialization & SSh Hardening
+#API Deployment with Nginx Recerse Proxy and HTTPS
 
-#Project Overview
+#Project overview
 
-This project simulates a cloud server deployment using Debian 12.
-The goal is to perform initial server setup and secure SSh access using key based authenication,also simulates real world cloud server initializetion process.
+This project simulates a simple server deployment process using Node.js API+Nginx reverse proxy+HTTPS encryption
+The goal is to demonstrate how a backend API serivce can be deploy behind an Nginx server,and how HTTPS communication can be enabled using a self-signed sertificate
+This project simulates a common real-world architecture:
+Clinet->Nginx->API server
+Throught this proejct,the following concepts are demonstrated:
+-Basic REST API service
+-Nginx reverse proxy configuration
+-HTTP request forwarding
+-HTTPS encryption using SSL certificate
+-Basic server deployment workflow
 
 #Environment
 
--OS:Debain 12
--Virtualization:VMware
--Client:win11 powershell
--SSh key type:ed25519
+-OS:Win11
+-Runtime:Node.js
+-Web Server:Nginx
+-API Framework:Express.js
+
 
 ##Objectives
+-Build a simple API service using Node.js
+-Deploy the API behind Nginx reverse proxy
+-Enable HTTPS encryption
+-Understand the interaction between API,Nginx and HTTPS
 
--Basic server initialization
--Create none root user
--Configure SSh key-based login 
--Disable password authentication
--Disable root login
--Apply basic security hardening
+
+##Architecture
+Client(Browser)---(HTTP Request)--->Nginx Server---(Reverse Proxy)--->Node.js API Server(Port 3000)
+Nginx receives requests from the client and forwards them to the backend API service
+
+
+##Project structure
+-nignx&api&https
+--README.md
+-scripts
+--app.js
+-nginx
+--nginx.conf
 
 --
 
 ##Step Perfoemed
 
-###1.Install and boot Debian 12 VM
-Config network and ensured SSh service are installed and running.
+##1.Install Node.js and Nginx
+Base requirement,create a new API project
+-mkdir my-api
+-cd my-api
+-npm init -y
+-npm install express
+--node app.js
+---start nginx
 
-###2.Install and verify SSh server
-Checked SSh status:
--sudo systemctl status ssh
+##2.Ceate API service
+Create app.js:
+-const espress=require('express')
+-const app=express()
+-app.get('/health',(req,res)=>{
+-    res.josn({
+-        status:"ok",
+-        message:"API server running"
+-    })
+-})
+-app.listen(3000,()=>{
+-    console.log("API running on prot 3000")
+-})
+Start the API server:
+-node app.js
 
-###3.Generate SSh key(client)
-Generate ed25519 key:
-ssh-keygen -t ed25519
+##3.Configure Nginx reverse proxy
+Change it document nginx.conf,after this,user can though nginx to reach API
+Modify nginx.conf:
+-server{
+-    listen 80;
+-    loaction/{
+-        proxy_pass http:127.0.0.1:3000;
+-        proxy_set_header Host $host;
+-        proxy_set_header X-Real-IP $remote_addr;
+-    }
+-}
 
-###4.Copy public key to server
--ssh-copy-id user@server_ip
-Verified that the public key was added to:
-~/.ssh/authorized_keys
+##4.Add HTTPS with Self-signed certificate
+Create document cert.pem and key.pem at C:\nginx\..
+Generate certificate:
+-openssl req -x509 -nodes -days 365 \
+-newkey rsa:2048 \
+-keyout key.pem \
+-out cert.pem
+Add HTTPS configuration in nginx.conf:
+-server{
+-    listen 443 ssl;
+-     ssl_certificate cert.pem;
+-    ssl_certificate_key key.pem;
+-    location / {
+-        proxy_pass http://127.0.0.1:3000;
+-    }
+-}
 
-###5.Disable password authentication
-Modified SSh configuration file:
--/etc/ssh/sshd_config
+##5. Test proxy and reboot nginx
+Test configuration:
+-.\nginx.exe -t
+Reload server:
+-.\nginx.exe -s reload
 
-Set:
-PasswordAuthentication no
-PermitRootLogin no
+##6.Browser access
+API can be accessed through:
+-https://localhost/health
+Expected response:
+-{
+-    "status":"ok",
+-    "message":"API server running"
+-}
 
-Restarted SSh:
-sudo systemctl restart ssh
+##7.Details perfetion and bugs fix
 
---
+-
 
 ##Security Improvements
+The following security improvements were applied:
+-Disable direct API exposure
+-Use Nginx reverse proxy
+-Enable HTTPS encrypted communication
+-Add basic security headers
+-Configure access logs and error logs
+-Implement a health check API endpoint
 
--Disable root login
--Disable password authentication
--Using key-based login only
--Created none root sudo user
--Verified corrent file permissions for ~/.ssh
-
---
 
 ##Result
-
-Server can only be accessed via SSh key authentucation.
-Password login is disable successfully.
-
-##Troubleshooting
-
-###Issue one: SSh service not found
-
-Cause:OpenSSh server package was not installed.
-
-Solution:
-Installed OpenSSh server manially.
-
-###Issue two:Connot connect after disabling password login
-
-Cause:
-Public key was not properly copied or incorrect file permissions.
-
-Solution:
--Verified ~/.ssh/authorized_keys and file permissions.
--Checked permissions:
-    -~/.ssh -> 700
-    -authorized_keys -> 600
+The API service is successfully deployed behind Nginx.
+Nginx handles incoming client requests and forwards them to the backend API server. HTTPS encryption ensures secure communication between client and server.
+This project demonstrates a basic deployment architecture commonly used in real-world environments.
